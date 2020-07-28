@@ -16,6 +16,8 @@ transactions = []
 unknown_lines = []
 skipped_lines = []
 skip_lines = True
+in_quote = False
+
 for line in f.readlines():
 
   if re.match(r".*TRANSACTIONS", line):
@@ -27,13 +29,27 @@ for line in f.readlines():
     skipped_lines.append(line)
     continue
 
-  if re.match(r"\d\d\d\d-\d\d-\d\d", line):
+  if in_quote:
+    quotes = line.count('"')
+
+    # quote ends when there is another odd number of quotes
+    in_quote = quotes == 0 or 1 == ( quotes % 2 )
+
+    postings.append(line)
+
+  elif re.match(r"\d\d\d\d-\d\d-\d\d", line):
     if len(tx) > 0 :
       transactions.append((tx, postings))
     tx = line
+
+    # quote starts if there's an odd number of quotes on the date line
+    in_quote = 1 == ( line.count('"') % 2 )
+
     postings = []
+
   elif re.match(r"\s+\S.*\n", line):
     postings.append(line)
+
   elif re.match("\n", line):
     if(len(line) > 1) :
       # This is something weird and we need to handle it
@@ -63,4 +79,3 @@ if len(unknown_lines)>0:
   print("Found %d Lines that dont match anything that will be deleted." % len(unknown_lines), file=sys.stderr)
   for line in unknown_lines:
     print(line, file = sys.stderr)
-
